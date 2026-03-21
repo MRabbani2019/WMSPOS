@@ -1,0 +1,17 @@
+appId: com.combosoft.pos
+productName: Combosoft POS
+directories:
+  output: dist
+  buildResources: build
+files:
+  - dist-electron/**/*
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
