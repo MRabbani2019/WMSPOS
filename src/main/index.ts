@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { join } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 
@@ -18,7 +18,7 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
+      sandbox: true
     }
   });
 
@@ -81,13 +81,23 @@ ipcMain.handle('saveTerminalConfig', async (_event, config) => {
 });
 
 ipcMain.handle('getStoredToken', async () => {
-  return readConfig()?.token || null;
+  const config = readConfig();
+  if (!config?.token) return null;
+  if (config.tokenEncrypted && safeStorage.isEncryptionAvailable()) {
+    try {
+      return safeStorage.decryptString(Buffer.from(config.token as string, 'base64'));
+    } catch { return null; }
+  }
+  return config.token;
 });
 
 ipcMain.handle('saveStoredToken', async (_event, token) => {
   try {
     const config = readConfig() || {};
-    config.token = token;
+    config.token = safeStorage.isEncryptionAvailable()
+      ? safeStorage.encryptString(token).toString('base64')
+      : token;
+    config.tokenEncrypted = safeStorage.isEncryptionAvailable();
     writeConfig(config);
     return { success: true };
   } catch (error) {

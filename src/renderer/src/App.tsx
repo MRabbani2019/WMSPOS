@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { useRegisterStore } from './stores/registerStore';
+import { useCartStore } from './stores/cartStore';
+import { useSettingsStore } from './stores/settingsStore';
+import { useOfflineStore } from './stores/offlineStore';
+import { usePromotionsStore } from './stores/promotionsStore';
+import apiClient from './lib/axios';
+
+// Layout
+import AppLayout from './components/AppLayout';
 
 // Pages
 import TerminalSetup from './pages/TerminalSetup';
@@ -14,8 +22,12 @@ import ReturnProcess from './pages/ReturnProcess';
 import StockLookup from './pages/StockLookup';
 import SalesHistory from './pages/SalesHistory';
 import CloseRegister from './pages/CloseRegister';
+import CashManagement from './pages/CashManagement';
+import BOPIS from './pages/BOPIS';
+import ShipFromStore from './pages/ShipFromStore';
+import Dashboard from './pages/Dashboard';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute() {
   const terminalConfig = useAuthStore((state) => state.terminalConfig);
   const token = useAuthStore((state) => state.token);
   const session = useRegisterStore((state) => state.session);
@@ -33,24 +45,42 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/open-register" replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 }
 
 function App() {
-  const setTerminalConfig = useAuthStore((state) => state.setTerminalConfig);
-  const setAuth = useAuthStore((state) => state.setAuth);
-
   useEffect(() => {
     const loadConfig = async () => {
       try {
         const config = await window.electronAPI.getTerminalConfig();
         if (config) {
-          setTerminalConfig(config);
+          useAuthStore.getState().setTerminalConfig(config);
 
           // Load stored token if exists
           const token = await window.electronAPI.getStoredToken();
           if (token && config.user) {
-            setAuth(token, config.user);
+            useAuthStore.getState().setAuth(token, config.user);
+
+            // Validate token is still accepted by the server
+            try {
+              await apiClient.get('/client/pos/ping', { timeout: 5000 });
+            } catch (err: any) {
+              if (err?.response?.status === 401) {
+                useAuthStore.getState().clearAuth();
+                return;
+              }
+            }
+
+            // Fetch POS settings (tax rates, receipt template, promotions, etc.)
+            useSettingsStore.getState().fetchSettings();
+            usePromotionsStore.getState().fetchPromotions();
+
+            // Restore training mode
+            const trainingMode = localStorage.getItem('pos_training_mode') === 'true';
+            if (trainingMode) {
+              const { useTrainingStore } = await import('./stores/trainingStore');
+              useTrainingStore.getState().enableTrainingMode();
+            }
           }
         }
       } catch (error) {
@@ -59,70 +89,51 @@ function App() {
     };
 
     loadConfig();
-  }, [setTerminalConfig, setAuth]);
+
+    // Handle auth token expiry from the axios interceptor
+    const handleAuthExpired = () => {
+      useAuthStore.getState().clearAuth();
+      useCartStore.getState().clearCart();
+      useRegisterStore.getState().clearSession();
+      // Navigation back to /login will happen automatically via ProtectedRoute redirect
+    };
+    window.addEventListener('pos:auth-expired', handleAuthExpired);
+
+    // Start monitoring network connectivity
+    const stopMonitor = useOfflineStore.getState().startConnectivityMonitor();
+    return () => {
+      stopMonitor();
+      window.removeEventListener('pos:auth-expired', handleAuthExpired);
+    };
+  }, []);
 
   return (
     <Routes>
+      {/* Public routes — no sidebar/layout */}
       <Route path="/setup" element={<TerminalSetup />} />
       <Route path="/login" element={<EmployeeLogin />} />
-      <Route path="/open-register" element={<OpenRegister />} />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <MainPOS />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/held"
-        element={
-          <ProtectedRoute>
-            <HeldTransactions />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/returns"
-        element={
-          <ProtectedRoute>
-            <Returns />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/returns/:orderId"
-        element={
-          <ProtectedRoute>
-            <ReturnProcess />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/stock"
-        element={
-          <ProtectedRoute>
-            <StockLookup />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/history"
-        element={
-          <ProtectedRoute>
-            <SalesHistory />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/close-register"
-        element={
-          <ProtectedRoute>
-            <CloseRegister />
-          </ProtectedRoute>
-        }
-      />
+      {/* Open register — protected but no AppLayout (session not yet open) */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/open-register" element={<OpenRegister />} />
+      </Route>
+
+      {/* All authenticated routes — wrapped in AppLayout with persistent sidebar */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<MainPOS />} />
+          <Route path="/held" element={<HeldTransactions />} />
+          <Route path="/returns" element={<Returns />} />
+          <Route path="/returns/:orderId" element={<ReturnProcess />} />
+          <Route path="/stock" element={<StockLookup />} />
+          <Route path="/history" element={<SalesHistory />} />
+          <Route path="/close-register" element={<CloseRegister />} />
+          <Route path="/cash-management" element={<CashManagement />} />
+          <Route path="/bopis" element={<BOPIS />} />
+          <Route path="/ship-from-store" element={<ShipFromStore />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+      </Route>
     </Routes>
   );
 }

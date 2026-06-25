@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, Package, Eye, EyeOff, MapPin, X, CheckCircle } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import apiClient from '../lib/axios';
 
 interface Category {
@@ -26,23 +27,32 @@ export default function ProductGrid() {
   const [scanFeedback, setScanFeedback] = useState<{ name: string; sku: string } | null>(null);
   const addItem = useCartStore((state) => state.addItem);
   const terminalConfig = useAuthStore((state) => state.terminalConfig);
+  const getTaxRateForProduct = useSettingsStore((state) => state.getTaxRateForProduct);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const inputRef = useRef<HTMLInputElement>(null);
   const scanFeedbackTimer = useRef<ReturnType<typeof setTimeout>>();
+  const abortRef = useRef<AbortController>();
 
   useEffect(() => {
     loadCategories();
   }, []);
 
-  // Keep input focused at all times (re-focus after modals, clicks, etc.)
+  // Keep input focused — but only when no modal is open
   useEffect(() => {
-    const refocus = () => {
+    const refocus = (e: MouseEvent) => {
+      // Don't steal focus if a modal overlay is open (any fixed z-50 element)
+      const target = e.target as HTMLElement;
+      if (target.closest('.fixed.inset-0') || target.closest('[role="dialog"]')) return;
       if (!stockModal && inputRef.current) {
         inputRef.current.focus();
       }
     };
     window.addEventListener('click', refocus);
-    return () => window.removeEventListener('click', refocus);
+    return () => {
+      window.removeEventListener('click', refocus);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (scanFeedbackTimer.current) clearTimeout(scanFeedbackTimer.current);
+    };
   }, [stockModal]);
 
   const loadCategories = async () => {
@@ -64,6 +74,9 @@ export default function ProductGrid() {
       return;
     }
 
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+
     setLoading(true);
     try {
       const params: any = {
@@ -72,12 +85,13 @@ export default function ProductGrid() {
       };
       if (term.trim()) params.searchData = term;
 
-      const response = await apiClient.get('/client/catalogue/pos/data', { params });
+      const response = await apiClient.get('/client/catalogue/pos/data', { params, signal: abortRef.current.signal });
       const data = response.data?.data || [];
       const mapped = (Array.isArray(data) ? data : []).flatMap(mapCatalogueToProducts);
       setProducts(mapped);
       return mapped;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return [];
       console.error('Failed to search products:', error);
       return [];
     } finally {
@@ -185,6 +199,7 @@ export default function ProductGrid() {
   };
 
   const handleAddToCart = (product: any) => {
+    const taxRate = getTaxRateForProduct(product.variationId, product.catalogueId);
     addItem({
       variationId: product.variationId,
       catalogueId: product.catalogueId,
@@ -194,6 +209,7 @@ export default function ProductGrid() {
       price: product.price,
       quantity: 1,
       maxStock: product.shelfStock,
+      taxRate,
     });
   };
 
@@ -211,12 +227,12 @@ export default function ProductGrid() {
 
   const getStockLabel = (product: any) => {
     if (product.shelfStock > 0) {
-      return { text: `${product.shelfStock} in store`, color: 'text-success-600' };
+      return { text: `${product.shelfStock} in store`, badge: 'badge-success' };
     }
     if (product.totalStock > 0) {
-      return { text: `Other stores (${product.totalStock})`, color: 'text-warning-600' };
+      return { text: `Other stores (${product.totalStock})`, badge: 'badge-warning' };
     }
-    return { text: 'Out of stock', color: 'text-danger-600' };
+    return { text: 'Out of stock', badge: 'badge-danger' };
   };
 
   const visibleProducts = hideOutOfStock
@@ -227,7 +243,7 @@ export default function ProductGrid() {
     <div>
       {/* Scan feedback toast */}
       {scanFeedback && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success-600 text-white px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-primary-500 text-white px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <CheckCircle className="w-5 h-5" />
           <div>
             <p className="font-medium text-sm">Added to cart</p>
@@ -253,7 +269,7 @@ export default function ProductGrid() {
         </div>
         <button
           onClick={() => setHideOutOfStock(!hideOutOfStock)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-sm font-medium border transition-colors whitespace-nowrap ${
             hideOutOfStock
               ? 'bg-primary-50 border-primary-200 text-primary-700'
               : 'bg-gray-50 border-gray-200 text-gray-600'
@@ -267,14 +283,10 @@ export default function ProductGrid() {
 
       {/* Category tabs */}
       {categories.length > 0 && (
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        <div className="flex gap-0 border-b border-[#E1E3E5] mb-5 overflow-x-auto">
           <button
             onClick={() => handleCategoryClick(null)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              activeCategory === null
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className={activeCategory === null ? 'category-tab-active' : 'category-tab'}
           >
             All
           </button>
@@ -282,11 +294,7 @@ export default function ProductGrid() {
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === cat.id
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={activeCategory === cat.id ? 'category-tab-active' : 'category-tab'}
             >
               {cat.name}
             </button>
@@ -301,8 +309,8 @@ export default function ProductGrid() {
         </div>
       ) : visibleProducts.length === 0 ? (
         <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">
+          <Package className="w-16 h-16 text-[#C9CCCF] mx-auto mb-4" />
+          <p className="text-[#6D7175]">
             {searchTerm || activeCategory
               ? hideOutOfStock && products.length > 0
                 ? `${products.length} product${products.length > 1 ? 's' : ''} found but out of stock in this store`
@@ -323,13 +331,13 @@ export default function ProductGrid() {
           {visibleProducts.map((product) => {
             const stock = getStockLabel(product);
             return (
-              <div key={product.variationId} className="card text-left hover:shadow-md transition-shadow">
+              <div key={product.variationId} className="bg-white rounded-xl border border-[#E1E3E5] p-3 text-left hover:-translate-y-0.5 hover:shadow-md hover:border-[#C9CCCF] transition-all duration-150">
                 <button
                   onClick={() => handleAddToCart(product)}
                   disabled={product.shelfStock <= 0}
                   className="w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-square bg-[#F6F6F7] rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                     {product.image ? (
                       <img
                         src={product.image}
@@ -340,12 +348,12 @@ export default function ProductGrid() {
                       <Package className="w-12 h-12 text-gray-400" />
                     )}
                   </div>
-                  <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.name}</h3>
-                  <p className="text-xs text-gray-500 mb-2">{product.sku}</p>
-                  <p className="font-bold text-lg">£{product.price.toFixed(2)}</p>
+                  <h3 className="font-semibold text-sm mb-1 line-clamp-2 text-[#202223]">{product.name}</h3>
+                  <p className="text-xs text-[#8C9196] mb-2">{product.sku}</p>
+                  <p className="font-bold text-base text-[#202223]">£{product.price.toFixed(2)}</p>
                 </button>
                 <div className="flex items-center justify-between mt-1">
-                  <span className={`text-xs ${stock.color}`}>{stock.text}</span>
+                  <span className={`text-xs ${stock.badge}`}>{stock.text}</span>
                   <button
                     onClick={(e) => handleViewStores(e, product)}
                     className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-0.5"
@@ -362,9 +370,9 @@ export default function ProductGrid() {
 
       {/* Warehouse stock modal */}
       {stockModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setStockModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setStockModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[#E1E3E5]">
               <div>
                 <h3 className="font-semibold text-sm">Stock Availability</h3>
                 <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{stockModal.product.name}</p>
@@ -409,7 +417,7 @@ export default function ProductGrid() {
                       </div>
                     );
                   })}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 mt-3">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E1E3E5] mt-3">
                     <span className="text-sm font-medium text-gray-700">Total</span>
                     <span className="text-sm font-bold">
                       {stockModal.stocks.reduce((sum, wh) => sum + wh.quantity, 0)}

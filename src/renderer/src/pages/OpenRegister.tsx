@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, LogIn } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -14,7 +14,34 @@ export default function OpenRegister() {
 
   const [openFloat, setOpenFloat] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState('');
+
+  // Check for existing active session on mount — resume if found
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      try {
+        const response = await apiClient.get('/client/pos/register/active', {
+          params: { terminalId: terminalConfig?.terminalId },
+        });
+        if (response.data.status && response.data.session) {
+          const s = response.data.session;
+          setSession({
+            id: s.id,
+            openFloat: parseFloat(s.openFloat) || 0,
+            openedAt: s.openedAt,
+          });
+          navigate('/');
+          return;
+        }
+      } catch {
+        // No active session or API unreachable — show the form
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkActiveSession();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +70,14 @@ export default function OpenRegister() {
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-success-600 to-success-800">
+        <p className="text-white text-lg">Checking register status...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-success-600 to-success-800">

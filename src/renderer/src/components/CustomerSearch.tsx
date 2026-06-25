@@ -48,16 +48,17 @@ export default function CustomerSearch({ onClose }: CustomerSearchProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/30" />
+      <div className="fixed top-0 right-0 bottom-0 w-[480px] bg-white shadow-[-8px_0_24px_rgba(0,0,0,0.12)] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-[#E1E3E5]">
           <h2 className="text-xl font-semibold">Customer Search</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-[#8C9196] hover:text-[#202223]">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-[#E1E3E5]">
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />

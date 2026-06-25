@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../stores/authStore'; // used in request interceptor
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9000/api',
@@ -28,9 +28,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const clearAuth = useAuthStore.getState().clearAuth;
-      clearAuth();
-      window.location.hash = '#/login';
+      window.dispatchEvent(new CustomEvent('pos:auth-expired'));
     }
     return Promise.reject(error);
   }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText } from 'lucide-react';
-import TopBar from '../components/TopBar';
 import { useRegisterStore } from '../stores/registerStore';
 import apiClient from '../lib/axios';
 
@@ -40,9 +39,7 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <TopBar />
-
+    <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-4 mb-6">

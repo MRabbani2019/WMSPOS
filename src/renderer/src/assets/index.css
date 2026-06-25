@@ -1,68 +1,169 @@
 @import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* ─── Primary (Combosoft Green) ─── */
+  --color-primary-50:  #E3F1EB;
+  --color-primary-100: #B8DDD0;
+  --color-primary-200: #8EC8B2;
+  --color-primary-300: #5FB394;
+  --color-primary-400: #39A27E;
+  --color-primary-500: #008060;
+  --color-primary-600: #006E52;
+  --color-primary-700: #005C44;
+  --color-primary-800: #004A37;
+  --color-primary-900: #003829;
 
-  --color-success-50: #f0fdf4;
-  --color-success-100: #dcfce7;
-  --color-success-200: #bbf7d0;
-  --color-success-300: #86efac;
-  --color-success-400: #4ade80;
-  --color-success-500: #22c55e;
-  --color-success-600: #16a34a;
-  --color-success-700: #15803d;
-  --color-success-800: #166534;
-  --color-success-900: #14532d;
+  /* ─── Success (same green family) ─── */
+  --color-success-50:  #E3F1EB;
+  --color-success-100: #B8DDD0;
+  --color-success-200: #8EC8B2;
+  --color-success-300: #5FB394;
+  --color-success-400: #39A27E;
+  --color-success-500: #008060;
+  --color-success-600: #006E52;
+  --color-success-700: #005C44;
+  --color-success-800: #004A37;
+  --color-success-900: #003829;
 
-  --color-danger-50: #fef2f2;
-  --color-danger-100: #fee2e2;
-  --color-danger-200: #fecaca;
-  --color-danger-300: #fca5a5;
-  --color-danger-400: #f87171;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
-  --color-danger-800: #991b1b;
-  --color-danger-900: #7f1d1d;
+  /* ─── Danger (Soft Red) ─── */
+  --color-danger-50:  #FFF4F4;
+  --color-danger-100: #FDE8E8;
+  --color-danger-200: #FACACA;
+  --color-danger-300: #F5A3A3;
+  --color-danger-400: #E7706A;
+  --color-danger-500: #D72C0D;
+  --color-danger-600: #BC260B;
+  --color-danger-700: #A1200A;
+  --color-danger-800: #861A08;
+  --color-danger-900: #6B1507;
+
+  /* ─── Warning (Amber) ─── */
+  --color-warning-50:  #FFF8E6;
+  --color-warning-100: #FFECB3;
+  --color-warning-200: #FFE080;
+  --color-warning-300: #FFD34D;
+  --color-warning-400: #FFC926;
+  --color-warning-500: #FFC453;
+  --color-warning-600: #B98900;
+  --color-warning-700: #8A6700;
+  --color-warning-800: #5C4500;
+  --color-warning-900: #2E2200;
+
+  /* ─── Sidebar ─── */
+  --color-sidebar: #1A1A1A;
+  --color-sidebar-hover: #252525;
+  --color-sidebar-active: #2D2D2D;
+  --color-sidebar-border: #2D2D2D;
+  --color-sidebar-text: #8A8A8A;
+
+  /* ─── Font ─── */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 font-sans antialiased;
+    @apply bg-[#F6F6F7] font-sans antialiased text-[#202223];
   }
 }
 
 @layer components {
+  /* ─── Buttons ─── */
   .btn-primary {
-    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           bg-primary-500 text-white rounded-[10px]
+           hover:bg-primary-600 active:scale-[0.98]
+           transition-all duration-150 font-medium cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           bg-[#F6F6F7] text-[#202223] rounded-[10px]
+           hover:bg-[#E1E3E5] active:scale-[0.98]
+           transition-all duration-150 font-medium cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-success {
-    @apply px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors font-medium cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           bg-primary-500 text-white rounded-[10px]
+           hover:bg-primary-600 active:scale-[0.98]
+           transition-all duration-150 font-medium cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply px-4 py-2 bg-danger-600 text-white rounded-lg hover:bg-danger-700 transition-colors font-medium cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           bg-danger-50 text-danger-500 rounded-[10px]
+           hover:bg-danger-100 active:scale-[0.98]
+           transition-all duration-150 font-medium cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           bg-transparent text-[#6D7175] rounded-[10px]
+           hover:bg-[#F6F6F7] hover:text-[#202223]
+           transition-all duration-150 font-medium cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ─── Inputs ─── */
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full h-11 px-3.5
+           bg-[#F6F6F7] border border-[#C9CCCF] rounded-[10px]
+           text-sm text-[#202223] placeholder:text-[#8C9196]
+           focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-primary-500 focus-visible:ring-offset-1
+           focus-visible:border-transparent transition-colors;
   }
 
+  /* ─── Cards (fully inlined — no cross-reference) ─── */
   .card {
-    @apply bg-white rounded-lg shadow-sm p-4;
+    @apply bg-white rounded-xl border border-[#E1E3E5] p-4;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-xl border border-[#E1E3E5] p-4
+           hover:-translate-y-0.5 hover:shadow-md
+           hover:border-[#C9CCCF] transition-all duration-150;
+  }
+
+  /* ─── Badges (fully inlined) ─── */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+           text-[11px] font-medium;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+           text-[11px] font-medium bg-primary-50 text-primary-500;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+           text-[11px] font-medium bg-warning-50 text-warning-700;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+           text-[11px] font-medium bg-danger-50 text-danger-500;
+  }
+
+  /* ─── Category Tabs (fully inlined) ─── */
+  .category-tab {
+    @apply px-4 py-3 text-sm font-medium text-[#6D7175]
+           hover:text-[#202223] border-b-2 border-transparent
+           transition-colors whitespace-nowrap cursor-pointer;
+  }
+
+  .category-tab-active {
+    @apply px-4 py-3 text-sm font-medium text-[#202223]
+           border-b-2 border-primary-500
+           transition-colors whitespace-nowrap cursor-pointer;
   }
 }
